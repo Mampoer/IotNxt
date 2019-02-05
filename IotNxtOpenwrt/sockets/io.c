@@ -747,7 +747,7 @@ void release_io (IO_Handle_t *IO_Handle)
     if (IO_Handle->io_cleanup)
     {
       IO_Handle->io_cleanup (IO_Handle);
-//      IO_Handle->io_cleanup = NULL;   // leave it here if the conn gets recycled it can still clean up
+      //IO_Handle->io_cleanup = NULL;
     }
     else
     {

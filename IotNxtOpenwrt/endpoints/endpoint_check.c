@@ -38,7 +38,7 @@ void endpoint_check   ( http_conn_t     *http_conn
 {
   const endpoint_def_t *endpoint_def = endpoint_def_array;
 
-  DEBUG_PRINTF ("(%s:%d) %s: %s", http_conn->IO_Handle.ip, http_conn->IO_Handle.fd, path, payload);
+  //DEBUG_PRINTF ("(%s:%d) %s: %s", http_conn->IO_Handle.ip, http_conn->IO_Handle.fd, path, payload);
 
   while (endpoint_def->path && endpoint_def->end_point_handler)
   {

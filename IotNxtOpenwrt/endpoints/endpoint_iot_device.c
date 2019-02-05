@@ -5,12 +5,21 @@
  *      Author: heindekock
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdlib.h>
 
 #include "web_notification.h"
 #include "file_serve.h"
+#include "resolv.h"
 #include "json.h"
 
+
+#define USER_AGENT "IOTNXT"
+
+#define CONN_IDLE_TIME 60 * 3
 
 typedef struct iot_device_info {
   http_conn_t           *http_conn;
@@ -22,15 +31,34 @@ typedef struct iot_device_info {
 
   json_t                *json_object;
 
-  int                   debug;
+  char                  *url;
+  char                  *server;
+  char                  *ip;
+
+  int                   port;
+
+  char                  *request;
+
+  http_rsp_t            http_rsp;
 } iot_device_info_t;
 
+typedef struct iot_server_info {
+  IO_Handle_t           *IO_Handle;
 
-#define CACHE_TIME 60 * 10  // clean up in 10 minutes
+  iot_device_info_t     *iot_device_handle;
+
+  char                  *url;
+  char                  *server;
+  char                  *ip;
+
+  int                   port;
+} iot_server_info_t;
 
 
-static int allocated_items_of_mem = 0;
+list_t *iot_server_list = NULL;
 
+
+void iot_list_update (char *id, char *data);
 
 static void load_iot_device_values (json_t *root, iot_device_info_t *iot_device_info)
 {
@@ -42,92 +70,219 @@ static void load_iot_device_values (json_t *root, iot_device_info_t *iot_device_
   DEBUG_PRINTF("\t ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 }
 
+static void server_cleanup (void *userdata)
+{
+  if (userdata)
+  {
+    iot_server_info_t *iot_server_info = userdata;
 
-static void iot_device_cleanup (void *userdata)
+    if (iot_server_info->url)
+      free (iot_server_info->url);
+
+    if (iot_server_info->server)
+      free (iot_server_info->server);
+
+    if (iot_server_info->ip)
+      free (iot_server_info->ip);
+
+    if (iot_server_info->iot_device_handle)
+      iot_server_info->iot_device_handle = NULL;
+  }
+}
+
+static void server_io_cleanup (IO_Handle_t *IO_Handle) // server con died or sever kick us off
+{
+  if (IO_Handle)
+  {
+    list_t *list_walker = iot_server_list;
+
+    while (list_walker)
+    {
+      iot_server_info_t *iot_server_info = list_walk (&list_walker);
+
+      if (iot_server_info->IO_Handle == IO_Handle)
+      {
+        list_remove (&iot_server_list, iot_server_info, server_cleanup, NULL);
+
+        DEBUG_PRINTF ("server_io_cleanup (%s:%d)", IO_Handle->ip, IO_Handle->fd);
+      }
+    }
+  }
+}
+
+static void iot_device_cleanup (void *userdata) // device side closed or killed
 {
   if (userdata)
   {
     iot_device_info_t *iot_device_info = userdata;
 
-    allocated_items_of_mem --;
+    list_t *list_walker = iot_server_list;
 
-    DEBUG_PRINTF("\t iot_device_cleanup (%d)\n", allocated_items_of_mem);
+    while (list_walker)
+    {
+      iot_server_info_t *iot_server_info = list_walk (&list_walker);
+
+      if (iot_server_info->iot_device_handle == iot_device_info)
+      {
+        list_remove (&iot_server_list, iot_server_info, server_cleanup, NULL);
+      }
+    }
+
+    DEBUG_PRINTF("\t iot_device_cleanup\n");
 
     if (iot_device_info->id)
       free (iot_device_info->id);
 
+    iot_device_info->id = NULL;
+
     if (iot_device_info->data)
       free (iot_device_info->data);
+
+    iot_device_info->data = NULL;
 
     if (iot_device_info->original)
       free (iot_device_info->original);
 
+    iot_device_info->original = NULL;
+
     if (iot_device_info->json_object)
       json_decref  (iot_device_info->json_object);
 
-    Timer_Cleanup (userdata);
+    iot_device_info->json_object = NULL;
+
+    if (iot_device_info->url)
+      free (iot_device_info->url);
+
+    iot_device_info->url = NULL;
+
+    if (iot_device_info->server)
+      free (iot_device_info->server);
+
+    iot_device_info->server = NULL;
+
+    if (iot_device_info->ip)
+      free (iot_device_info->ip);
+
+    iot_device_info->ip = NULL;
+
+    if (iot_device_info->request)
+      free (iot_device_info->request);
+
+    iot_device_info->request = NULL;
 
     //free (iot_device_info); moved to release conn (caller)
   }
 }
 
 
-//static void json_find_respond ( http_conn_t *http_conn
-//                              , char        *rsp
-//                              , bool        debug       )
-//{
-//  if (rsp && http_conn)
-//  {
-//    DEBUG_PRINTF("\t %s", rsp);
-//
-//    list_t *http_header_list = NULL;
-//
-////    add_http_header (&http_header_list, "Content-Type", MIME_APPLICATION_JSON);
-//    add_http_header (&http_header_list, "Content-Type", MIME_TEXT_HTML); // guestlink can not handle json mime type
-//
-//    http_reply (http_conn, HTTP_RES_200, http_header_list, rsp, strlen (rsp));
-//
-//    list_clear (&http_header_list, NULL, __func__);
-//  }
-//  else
-//    DEBUG_PRINTF("ERROR: no conn!");
-//}
-//
-//
-//static void RespondWithReasonResponseOnly ( http_conn_t *http_conn
-//                                          , int ResponseCode, int ReasonCode
-//                                          , bool debug                        )
-//{
-//  if (http_conn)
-//  {
-//    json_t *TransResponse = json_object ();
-//
-//    char *rsp = NULL;
-//
-//    if (TransResponse != NULL)
-//    {
-//      json_object_set_new (TransResponse, "responseCode", json_integer (ResponseCode));
-//      json_object_set_new (TransResponse, "reasonCode", json_integer (ReasonCode));
-//
-//      rsp = json_dumps (TransResponse, JSON_ENSURE_ASCII | JSON_PRESERVE_ORDER | JSON_COMPACT);
-//
-//      json_decref (TransResponse);
-//    }
-//
-//    json_find_respond ( http_conn
-//                      , rsp
-//                      , debug );
-//
-//    if (rsp)
-//      free (rsp);
-//  }
-//  else
-//    DEBUG_PRINTF("ERROR: no conn!");
-//}
+
+static char *http_post (char *Server, char *Path, char *User, char *Pass, char *request)
+{
+  char *buffer;
+  char *auth = NULL;
+
+  if (User && Pass)
+    auth = basic_auth (User, Pass);
+
+  if (request)
+    asprintf (&buffer,  "POST /%s HTTP/1.1\r\n"
+                        "Host: %s\r\n"
+                        "User-Agent: %s\r\n"
+                        "%s"
+                        "%s"
+                        "%s"
+//                        "Connection: close\r\n"
+                        "Content-Type: application/x-www-form-urlencoded\r\n"
+                        "Content-Length: %zd\r\n\r\n%s"
+              , Path
+              , Server
+              , USER_AGENT
+              , auth ? "Authorization: Basic " : ""
+              , auth ? auth : ""
+              , auth ? "\r\n" : ""
+              , strlen (request)
+              , request);
+  else
+    asprintf (&buffer, "POST /%s HTTP/1.1\r\n"
+                        "Host: %s\r\n"
+                        "User-Agent: %s\r\n"
+//                        "Connection: close\r\n"
+                        "Accept: */*\r\n\r\n", Path, Server, USER_AGENT);
+
+  if (auth)
+  {
+    free (auth);
+  }
+
+  return (buffer);
+}
+
+static int server_io (IO_Handle_t *IO_Handle)
+{
+  if (IO_Handle)
+  {
+    list_t *list_walker = iot_server_list;
+
+    while (list_walker)
+    {
+      iot_server_info_t *iot_server_info = list_walk (&list_walker);
+
+      if (iot_server_info->IO_Handle == IO_Handle)
+      {
+        if (iot_server_info->iot_device_handle)
+        {
+          iot_device_info_t *iot_device_info = iot_server_info->iot_device_handle;
+
+          if (iot_device_info->http_conn)
+          {
+            if (iot_device_info->http_conn->endpoint_cleanup == iot_device_cleanup)
+            {
+              if (IO_Handle->tx_index == 0)
+              {
+                DEBUG_PRINTF("(%s:%d) Send ready", IO_Handle->ip, IO_Handle->fd)
+
+                if (iot_device_info->request)
+                {
+                  //DEBUG_PRINTF("(%s:%d) Sending:\n%s", iot_server_info->IO_out_Handle.ip, iot_server_info->IO_out_Handle.fd, iot_device_info->request);
+                  io_buffer_out (IO_Handle, (uint8_t *) iot_device_info->request, strlen (iot_device_info->request));
+                  free (iot_device_info->request);
+                  iot_device_info->request = NULL;
+                }
+              }
+
+              if (IO_Handle->rx_index)
+              {
+                if (http_parse_response  ( &iot_device_info->http_rsp
+                                         , (char *)IO_Handle->rx_buf
+                                         , &IO_Handle->rx_index))
+                {
+                  if (iot_device_info->http_rsp.content_length)
+                  {
+                    DEBUG_PRINTF("IoT server response: %s: (%d) %.*s"
+                        , iot_device_info->url, iot_device_info->http_rsp.status
+                        , iot_device_info->http_rsp.content_length
+                        , IO_Handle->rx_buf + iot_device_info->http_rsp.headder_length);
+
+                    http_reply  ( iot_device_info->http_conn
+                                , iot_device_info->http_rsp.status
+                                , NULL
+                                , (char *)IO_Handle->rx_buf + iot_device_info->http_rsp.headder_length
+                                , iot_device_info->http_rsp.content_length);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return 0;
+}
 
 
-
-void prototype_notification_callback (void *userdata, http_rsp_t *http_rsp, char *response, int len )
+static void iot_server_resolv_callback (void *userdata, char *addr, char *ip)
 {
   http_conn_t *http_conn = (http_conn_t *)find_io (userdata);
 
@@ -141,15 +296,44 @@ void prototype_notification_callback (void *userdata, http_rsp_t *http_rsp, char
 
         if (iot_device_info->http_conn == http_conn)
         {
-          if (http_rsp && response && len) // good query result
+          if (ip && addr)
           {
-            DEBUG_PRINTF("prototype io response: %.*s", len, response);
+            DEBUG_PRINTF("resolved %s as %s", addr, ip);
 
-            http_reply (http_conn, http_rsp->status, NULL, response, len);
-          }
-          else
-          {
-            DEBUG_PRINTF("prototype io notify failed");
+            iot_server_info_t *iot_server_info = list_add (&iot_server_list, sizeof(iot_server_info), "iot server");
+
+            if (iot_server_info)
+            {
+              iot_server_info->IO_Handle = io_connect (ip, iot_device_info->port, 1, CONN_IDLE_TIME, sizeof(IO_Handle_t));
+
+              if (iot_server_info->IO_Handle )
+              {
+                iot_device_info->ip                     = strdup (ip);
+
+                iot_server_info->IO_Handle->io_cleanup  = server_io_cleanup;
+                iot_server_info->IO_Handle->io          = server_io;
+                iot_server_info->iot_device_handle      = iot_device_info;
+
+                iot_server_info->url                    = strdup (iot_device_info->url);
+                iot_server_info->server                 = strdup (iot_device_info->server);
+                iot_server_info->port                   = iot_device_info->port;
+                iot_server_info->ip                     = strdup (ip);
+
+                DEBUG_PRINTF ("(%s:%d) new connection", iot_device_info->ip, iot_server_info->IO_Handle->fd);
+
+                return;
+              }
+              else
+              {
+                DEBUG_PRINTF("ERROR: No io handle created!");
+
+                http_reply (http_conn
+                          , HTTP_RES_400
+                          , NULL
+                          ,         "<html><h1>400 - No server io handle available</h1></html>"
+                          , strlen ("<html><h1>400 - No server io handle available</h1></html>"));
+              }
+            }
           }
         }
       }
@@ -162,17 +346,12 @@ void iot_device ( http_conn_t     *http_conn
                 , char            *payload
                 , bool            debug)
 {
-  if (payload && strlen(payload))
+  if (payload && strlen (payload))
   {
-    iot_device_info_t *iot_device_info = calloc (1, sizeof(iot_device_info_t));
+    iot_device_info_t *iot_device_info = calloc (1, sizeof (iot_device_info_t));
 
     if (iot_device_info)
     {
-      allocated_items_of_mem++;
-
-      Timer_Add (CACHE_TIME, SingleShot, iot_device_cleanup, iot_device_info); // alwais in front
-
-      iot_device_info->debug            = debug;
       iot_device_info->http_conn        = http_conn;
 
       http_conn->endpoint_cleanup       = iot_device_cleanup;
@@ -184,68 +363,125 @@ void iot_device ( http_conn_t     *http_conn
 
       if (iot_device_info->json_object == NULL)
       {
-        DEBUG_PRINTF("ERROR: CAN NOT LOAD JSON DATA!");
-        DEBUG_PRINTF("Error: on line %d: %s", error.line, error.text);
+        char err[256] = "";
+        DEBUG_PRINTF("ERROR: CAN NOT LOAD JSON DATA, on line %d: %s", error.line, error.text);
+        DEBUG_PRINTF ("%s", payload);
+        snprintf (err, sizeof(err), "<html><h1>400 - Invalid JSON: line %d - %s</h1></html>", error.line, error.text);
 
-//        RespondWithReasonResponseOnly ( http_conn
-//                                      , ResponseError, ReasonCodeFieldMissing
-//                                      , debug                                 );
+        http_reply (http_conn, HTTP_RES_400, NULL, err, strlen (err));
       }
       else
       {
-        if (iot_device_info->debug)
-        {
-          char *pretty = json_dumps (iot_device_info->json_object, JSON_INDENT(1) | JSON_PRESERVE_ORDER);
-          DEBUG_PRINTF("\t Array object :%s", pretty);
-          free (pretty);
-        }
-
         load_iot_device_values (iot_device_info->json_object, iot_device_info);
 
         if (!iot_device_info->id)
         {
           DEBUG_PRINTF("\t Can not find device ID");
 
-//          RespondWithReasonResponseOnly ( http_conn
-//                                        , ResponseError, ReasonCodeFieldMissing
-//                                        , debug                                   );
-
+          http_reply (http_conn
+                    , HTTP_RES_400
+                    , NULL
+                    ,         "<html><h1>400 - can not find iot device id</h1></html>"
+                    , strlen ("<html><h1>400 - can not find iot device id</h1></html>"));
         }
         else
         {
-          // store id + data
-          // do web hook notification to external server
+          iot_list_update (iot_device_info->id, iot_device_info->data);
 
-          iot_device_info->data = strdup (payload);
+          iot_device_info->original = strdup (payload);
 
-          do_web_hook_notification (  "https://prototype.iotnxt.io/api/v3/data/post"
-                                    , payload
-                                    , "api"
-                                    , "dgcszsu7qhb5f3p0prcf1ckqpwimeydi"
-                                    , prototype_notification_callback
-                                    , http_conn
-                                  );
+          char Path[1024] = "";
+          char Server[255] = "";
+          iot_device_info->port = 443;
+          iot_device_info->url = strdup ("https://prototype.iotnxt.io/api/v3/data/post");
 
-          return;
+          if (ExplodeURL (iot_device_info->url, Server, &iot_device_info->port, Path) == 1)
+          {
+            iot_device_info->server   = strdup (Server);
+            iot_device_info->request  = http_post (Server, Path, "api", "dgcszsu7qhb5f3p0prcf1ckqpwimeydi", payload);
+
+            if (iot_device_info->request) // look for open server conn
+            {
+              list_t *list_walker = iot_server_list;
+
+              while (list_walker)
+              {
+                iot_server_info_t *iot_server_info = list_walk (&list_walker);
+
+                if (strcmp (iot_server_info->server, Server) == 0) // same server
+                {
+                  if (iot_server_info->port == iot_device_info->port) // same port - reuse
+                  {
+                    if (iot_server_info->IO_Handle->fd > 0) // same port - reuse
+                    {
+                      if (iot_server_info->IO_Handle->io_cleanup == server_io_cleanup) // seems reusable
+                      {
+                        DEBUG_PRINTF("(%s:%d) Sending:\n%s"
+                            , iot_server_info->IO_Handle->ip
+                            , iot_server_info->IO_Handle->fd
+                            , iot_device_info->request);
+
+                        io_buffer_out ( iot_server_info->IO_Handle
+                                      , (uint8_t *) iot_device_info->request
+                                      , strlen (iot_device_info->request));
+
+                        free (iot_device_info->request);
+                        iot_device_info->request = NULL;
+                        return;
+                      }
+                    }
+                  }
+                }
+              }
+
+              resolv (iot_device_info->server, iot_server_resolv_callback, http_conn);
+
+              return;
+            }
+            else
+            {
+              DEBUG_PRINTF("PANIC PANIC PANIC: Could not build iot server request");
+
+              http_reply (http_conn
+                        , HTTP_RES_400
+                        , NULL
+                        ,         "<html><h1>400 - Can not build server request</h1></html>"
+                        , strlen ("<html><h1>400 - Can not build server request</h1></html>"));
+            }
+          }
+          else
+          {
+            DEBUG_PRINTF("PANIC PANIC PANIC: Could not find server from %s", iot_device_info->url);
+
+            http_reply (http_conn
+                      , HTTP_RES_400
+                      , NULL
+                      ,         "<html><h1>400 - Can not find server details</h1></html>"
+                      , strlen ("<html><h1>400 - Can not find server details</h1></html>"));
+          }
         }
       }
     }
     else
     {
-      DEBUG_PRINTF("PANIC PANIC PANIC: Could not create a transaction info");
+      DEBUG_PRINTF("PANIC PANIC PANIC: Could not create iot device info");
 
-//      RespondWithReasonResponseOnly ( http_conn
-//                                    , ResponseError, ReasonCodeGeneralError
-//                                    , debug                                   );
-
+      http_reply (http_conn
+                , HTTP_RES_400
+                , NULL
+                ,         "<html><h1>400 - Out of memory in iot device endpoint</h1></html>"
+                , strlen ("<html><h1>400 - Out of memory in iot device endpoint</h1></html>"));
     }
   }
   else
   {
     DEBUG_PRINTF("ERROR: Empty query");
 
-//    RespondWithReasonResponseOnly ( http_conn
-//                                  , ResponseError, ReasonCodeFieldMissing
-//                                  , debug                                   );
+
+    http_reply (http_conn
+              , HTTP_RES_400
+              , NULL
+              ,         "<html><h1>400 - Empty query</h1></html>"
+              , strlen ("<html><h1>400 - Empty query</h1></html>"));
   }
 }
