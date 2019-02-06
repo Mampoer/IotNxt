@@ -219,6 +219,19 @@ void *list_find (list_t *list, void *item)
   return NULL;
 }
 
+int list_count (list_t *list)
+{
+  int count = 0;
+
+  while (list)
+  {
+    count++;
+    list = list->next;
+  }
+
+  return count;
+}
+
 
 char from_hex(char ch)
 {

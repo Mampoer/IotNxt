@@ -22,7 +22,7 @@
 #define CONN_IDLE_TIME ONE_MINUTE * 3
 
 typedef struct iot_device_info {
-  http_conn_t           *http_conn;
+  http_conn_t           *http_conn; // dont move from first pos so IO_Handle will be at same addr
 
   char                  *id;
   char                  *data;
@@ -60,6 +60,7 @@ list_t *iot_server_list = NULL;
 static int allocated_items_of_mem = 0;
 
 void iot_list_update (char *id, char *data);
+static void iot_server_resolv_callback (void *userdata, char *addr, char *ip);
 
 static void load_iot_device_values (json_t *root, iot_device_info_t *iot_device_info)
 {
@@ -71,11 +72,77 @@ static void load_iot_device_values (json_t *root, iot_device_info_t *iot_device_
   DEBUG_PRINTF("\t ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 }
 
+
+static char *http_post (char *Server, char *Path, char *User, char *Pass, char *request)
+{
+  char *buffer;
+  char *auth = NULL;
+
+  if (User && Pass)
+    auth = basic_auth (User, Pass);
+
+  if (request)
+    asprintf (&buffer,  "POST /%s HTTP/1.1\r\n"
+                        "Host: %s\r\n"
+                        "User-Agent: %s\r\n"
+                        "%s"
+                        "%s"
+                        "%s"
+//                        "Connection: close\r\n"
+                        "Content-Type: application/x-www-form-urlencoded\r\n"
+                        "Content-Length: %zd\r\n\r\n%s"
+              , Path
+              , Server
+              , USER_AGENT
+              , auth ? "Authorization: Basic " : ""
+              , auth ? auth : ""
+              , auth ? "\r\n" : ""
+              , strlen (request)
+              , request);
+  else
+    asprintf (&buffer, "POST /%s HTTP/1.1\r\n"
+                        "Host: %s\r\n"
+                        "User-Agent: %s\r\n"
+//                        "Connection: close\r\n"
+                        "Accept: */*\r\n\r\n", Path, Server, USER_AGENT);
+
+  if (auth)
+  {
+    free (auth);
+  }
+
+  return (buffer);
+}
+
+
 static void server_cleanup (void *userdata)
 {
   if (userdata)
   {
     iot_server_info_t *iot_server_info = userdata;
+
+    if (iot_server_info->iot_device_handle) // conn still busy - sever conn must have died
+    {
+      iot_device_info_t *iot_device_info = iot_server_info->iot_device_handle;
+
+      DEBUG_PRINTF("(%s:%d) Active server conn error", iot_server_info->IO_Handle->ip, iot_server_info->IO_Handle->fd)
+
+      char Path[1024] = "";
+      char Server[255] = "";
+      iot_device_info->port = 443;
+      iot_device_info->url = strdup ("https://prototype.iotnxt.io/api/v3/data/post");
+
+      if (ExplodeURL (iot_device_info->url, Server, &iot_device_info->port, Path) == 1)
+      {
+        iot_device_info->server   = strdup (Server);
+        iot_device_info->request  = http_post (Server, Path, "api", "dgcszsu7qhb5f3p0prcf1ckqpwimeydi", iot_device_info->original);
+
+        if (iot_device_info->request)
+        {
+          resolv (iot_device_info->server, iot_server_resolv_callback, iot_device_info->http_conn);
+        }
+      }
+    }
 
     if (iot_server_info->url)
       free (iot_server_info->url);
@@ -85,18 +152,6 @@ static void server_cleanup (void *userdata)
 
     if (iot_server_info->ip)
       free (iot_server_info->ip);
-
-    if (iot_server_info->iot_device_handle)
-    {
-      iot_device_info_t *iot_device_info = iot_server_info->iot_device_handle;
-
-      reply_error ( iot_device_info->http_conn
-                  , "timeout"
-                  , __SHORT_FILE__
-                  , __LINE__ );
-
-      iot_server_info->iot_device_handle = NULL;
-    }
   }
 }
 
@@ -114,7 +169,7 @@ static void server_io_cleanup (IO_Handle_t *IO_Handle) // server con died or sev
       {
         list_remove (&iot_server_list, iot_server_info, server_cleanup, NULL);
 
-        DEBUG_PRINTF ("server_io_cleanup (%s:%d)", IO_Handle->ip, IO_Handle->fd);
+        DEBUG_PRINTF ("(%s:%d)\t server_io_cleanup (%d)", IO_Handle->ip, IO_Handle->fd, list_count (iot_server_list));
       }
     }
   }
@@ -172,55 +227,18 @@ static void iot_device_cleanup (void *userdata) // device side closed or killed
 
     allocated_items_of_mem--;
 
-    DEBUG_PRINTF("\t iot_device_cleanup (%d)", allocated_items_of_mem);
+    DEBUG_PRINTF("(%s:%d)\t iot_device_cleanup (%d)"
+        , iot_device_info->http_conn->IO_Handle.ip
+        , iot_device_info->http_conn->IO_Handle.fd
+        , allocated_items_of_mem);
   }
 }
 
-
-
-static char *http_post (char *Server, char *Path, char *User, char *Pass, char *request)
-{
-  char *buffer;
-  char *auth = NULL;
-
-  if (User && Pass)
-    auth = basic_auth (User, Pass);
-
-  if (request)
-    asprintf (&buffer,  "POST /%s HTTP/1.1\r\n"
-                        "Host: %s\r\n"
-                        "User-Agent: %s\r\n"
-                        "%s"
-                        "%s"
-                        "%s"
-//                        "Connection: close\r\n"
-                        "Content-Type: application/x-www-form-urlencoded\r\n"
-                        "Content-Length: %zd\r\n\r\n%s"
-              , Path
-              , Server
-              , USER_AGENT
-              , auth ? "Authorization: Basic " : ""
-              , auth ? auth : ""
-              , auth ? "\r\n" : ""
-              , strlen (request)
-              , request);
-  else
-    asprintf (&buffer, "POST /%s HTTP/1.1\r\n"
-                        "Host: %s\r\n"
-                        "User-Agent: %s\r\n"
-//                        "Connection: close\r\n"
-                        "Accept: */*\r\n\r\n", Path, Server, USER_AGENT);
-
-  if (auth)
-  {
-    free (auth);
-  }
-
-  return (buffer);
-}
 
 static int server_io (IO_Handle_t *IO_Handle)
 {
+  int ret = 0;
+
   if (IO_Handle)
   {
     list_t *list_walker = iot_server_list;
@@ -241,7 +259,7 @@ static int server_io (IO_Handle_t *IO_Handle)
             {
               if (IO_Handle->tx_index == 0)
               {
-                //DEBUG_PRINTF("(%s:%d) Send ready", IO_Handle->ip, IO_Handle->fd)
+                DEBUG_PRINTF("(%s:%d) Send ready", IO_Handle->ip, IO_Handle->fd)
 
                 if (iot_device_info->request)
                 {
@@ -254,9 +272,9 @@ static int server_io (IO_Handle_t *IO_Handle)
 
               if (IO_Handle->rx_index)
               {
-                if (http_parse_response  ( &iot_device_info->http_rsp
-                                         , (char *)IO_Handle->rx_buf
-                                         , &IO_Handle->rx_index))
+                if ((ret = http_parse_response ( &iot_device_info->http_rsp
+                                               , (char *)IO_Handle->rx_buf
+                                               , &IO_Handle->rx_index)))
                 {
                   if (iot_device_info->http_rsp.content_length)
                   {
@@ -285,7 +303,7 @@ static int server_io (IO_Handle_t *IO_Handle)
     }
   }
 
-  return 0;
+  return ret;
 }
 
 
@@ -439,13 +457,15 @@ void iot_device ( http_conn_t     *http_conn
                               , iot_server_info->IO_Handle->ip
                               , iot_server_info->IO_Handle->fd);
 
+                          iot_server_info->iot_device_handle = iot_device_info; // reserve server conn
+
                           io_buffer_out ( iot_server_info->IO_Handle
                                         , (uint8_t *) iot_device_info->request
                                         , strlen (iot_device_info->request));
 
                           free (iot_device_info->request);
                           iot_device_info->request = NULL;
-                          iot_server_info->iot_device_handle = iot_device_info; // reserve server conn
+
                           return;
                         }
                       }

@@ -30,6 +30,7 @@ void *list_find   (list_t *list, void *item);
 void list_remove  (list_t **indirect, void *blob, cleanup_callback_t cleanup_callback, const char *debug);
 //void list_remove2 (list_t **indirect, list_t *list_item, cleanup_callback_t cleanup_callback, const char *debug);
 void list_clear   (list_t **indirect, cleanup_callback_t cleanup_callback, const char *debug);
+int  list_count   (list_t *list);
 
 //typedef struct {
 //  char  *Request;

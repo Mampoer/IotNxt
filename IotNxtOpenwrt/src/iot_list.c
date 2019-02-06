@@ -41,9 +41,13 @@ void iot_list_update (char *id, char *data)
       iot_list_item->data = strdup (data);
 
       updated = true;
-    }
 
-    DEBUG_PRINTF("updated %s|%s|%ld", iot_list_item->id, iot_list_item->data, iot_list_item->timestamp);
+      DEBUG_PRINTF("updated %s|%s|%ld", iot_list_item->id, iot_list_item->data, iot_list_item->timestamp);
+    }
+    else
+    {
+      DEBUG_PRINTF("        %s|%s|%ld", iot_list_item->id, iot_list_item->data, iot_list_item->timestamp);
+    }
   }
 
   if (!updated)

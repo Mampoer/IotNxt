@@ -42,7 +42,7 @@ typedef void (*http_cleanup_t)    (void *handle);
 
 typedef struct http_conn
 {
-  IO_Handle_t           IO_Handle;
+  IO_Handle_t           IO_Handle;         // leave in first pos
 
   int                   header_lenght,
                         content_length;
