@@ -407,7 +407,7 @@ int  http_parse_request   ( http_conn_t *http_conn
 
               endpoint_check  ( http_conn
                               , http_conn->url_decoded_path
-                              , payload       );
+                              , payload                     );
 
               if (payload)
                 free (payload);

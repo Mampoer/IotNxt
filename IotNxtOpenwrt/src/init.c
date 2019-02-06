@@ -168,7 +168,7 @@ void correct_path ( char *argv [ ] )
 
 
 
-void one_sec_poll ( void *userdata )
+void one_msec_poll ( void *userdata )
 {
   io_poll (__func__);
 }
@@ -247,6 +247,6 @@ void init (int argc, char *argv [])
 
   init_openssl (hostname, argv[0], (int)GetUcTimeStamp());
 
-  Timer_Add (1, MultiShot, one_sec_poll, NULL);
+  Timer_Add (1, MultiShot, one_msec_poll, NULL);
 }
 

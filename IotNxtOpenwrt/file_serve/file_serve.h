@@ -92,6 +92,11 @@ void reply_not_found  (http_conn_t      *http_conn);
 
 void reply_forbidden  (http_conn_t      *http_conn);
 
+void reply_error      (http_conn_t      *http_conn
+                      , char            *error
+                      , char            *file
+                      , int             line);
+
 void http_reply       (http_conn_t      *http_conn
                       , int             code
                       , list_t          *header_list

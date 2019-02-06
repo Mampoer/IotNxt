@@ -285,6 +285,30 @@ void reply_forbidden (http_conn_t *http_conn)
   list_clear (&http_header_list, NULL, __func__);
 }
 
+void reply_error (http_conn_t *http_conn, char *error, char *file, int line)
+{
+  list_t *http_header_list = NULL;
+
+  add_http_header (&http_header_list, "Content-Type"                    , "text/html" );
+
+  char *buffer;
+
+  asprintf (&buffer,  "<html><h1>400 - %s%s %s%d %s%s</h1></html>", file ? "file " : ""
+                                                                  , file ?  file   : ""
+                                                                  , line ? "line " : ""
+                                                                  , line
+                                                                  , error ? "error: " : ""
+                                                                  , error ?  error    : "" );
+
+  http_reply (http_conn
+            , HTTP_RES_400
+            , http_header_list
+            , buffer ?         buffer   :         "<html><h1>400 - Error</h1></html>"
+            , buffer ? strlen (buffer)  : strlen ("<html><h1>400 - Error</h1></html>"));
+
+  list_clear (&http_header_list, NULL, __func__);
+}
+
 static
 void serve (http_conn_t *http_conn
           , char *file)

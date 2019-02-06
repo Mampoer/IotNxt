@@ -40,7 +40,7 @@ int Max_Timers = 0;
 
 //int Timer_Events;
 
-#define freq_nanosecs ( 1 * 1000000000 )  // 1 sec
+#define freq_nanosecs ( 1 * 100000000 )  // 100 msec
 //bool clear_poll_tick = true;
 //int poll_tick = 0;
 
@@ -54,41 +54,7 @@ void Timer_Tick(int sig, siginfo_t *si, void *uc)
 //     if ( --Timers[i].Time_Left == 0 )
 //      Timer_Events++;
 
-//  if (clear_poll_tick)
-//  {
-//    clear_poll_tick = false;
-//    poll_tick = 0;
-//    return;
-//  }
-//
-//  poll_tick++;
-//
-//  if (poll_tick == 10)
-//  {
-//    void *array[100];
-//    size_t size;
-//    char **strings;
-//    size_t i;
-//
-//    size = backtrace(array, 100);
-//    strings = backtrace_symbols(array, size);
-//
-//    printf("Obtained %zd stack frames.\n", size);
-//
-//    for (i = 0; i < size; i++)
-//      printf("%s\n", strings[i]);
-//
-//    free(strings);
-//
-//    fflush(stdout);
-//  }
-//
-//  if (poll_tick >= 30)
-//  {
-//    extern bool signal_quit;
-//    signal_quit = false;
-//    exit(EXIT_FAILURE);
-//  }
+  //printf ("tick\n");
 }
 
 //**********************************************************************************

@@ -24,6 +24,7 @@ typedef struct endpoint_def {
 
 const endpoint_def_t endpoint_def_array[] = {
     {"/api/v3/data/post"                , iot_device          },
+    {"/api/v3/list"                     , iot_list            },
     {NULL                               , NULL                }
 };
 

@@ -471,7 +471,7 @@ void socket_accept (void *ptr)
     //    alert("DOS from %s", addr);
     //  }
 
-    IO_Handle_t *IO_Handle = list_add (&io_list, Socket->size, "conn");
+    IO_Handle_t *IO_Handle = list_add (&io_list, Socket->size, "conn in");
 
     if (IO_Handle)
     {
@@ -481,7 +481,7 @@ void socket_accept (void *ptr)
 
       IO_Handle->ip = strdup (hbuf);
 
-      Timer_Add (60 * 3, SingleShot, io_timeout, IO_Handle); // 3 minute squating time alowed
+      Timer_Add (3 * ONE_MINUTE, SingleShot, io_timeout, IO_Handle); // 3 minute squating time allowed
 
       if (Socket->conn_init)
       {
@@ -547,7 +547,7 @@ void socket_accept (void *ptr)
 
       //DEBUG_PRINTF("(%s:%d) New http connection (same ip %d) total %d (mem %d)!", conn->IO_Handle->remote_ip, conn->IO_Handle->fd, ip_count, conn_count, allocated_items_of_mem);
 
-      IO_Handle->idle_time = 60 * 15;
+      IO_Handle->idle_time = ONE_MINUTE * 15;
 
       epoll_add (IO_Handle->fd, IO_Handle);
     }
@@ -692,7 +692,7 @@ void io_buffer_out (IO_Handle_t *IO_Handle, uint8_t *reply, int len)
 {
   if (IO_Handle && reply && len > 0)
   {
-    DEBUG_PRINTF("(%s:%d) conn_add unencrypted %d", IO_Handle->ip, IO_Handle->fd, len);
+    //DEBUG_PRINTF("(%s:%d) conn_add unencrypted %d", IO_Handle->ip, IO_Handle->fd, len);
 
     if (IO_Handle->ssl)
     {
@@ -742,7 +742,7 @@ void release_io (IO_Handle_t *IO_Handle)
 {
   if (IO_Handle)
   {
-    DEBUG_PRINTF("(%s:%d) release io", IO_Handle->ip, IO_Handle->fd);
+    //DEBUG_PRINTF("(%s:%d) release io", IO_Handle->ip, IO_Handle->fd);
 
     if (IO_Handle->io_cleanup)
     {
@@ -811,7 +811,7 @@ static void buf_rx (IO_Handle_t *IO_Handle, uint8_t *buf, int len)
       {
         //DEBUG_PRINTF("(%s:%d) parser returned %d", IO_Handle->ip, IO_Handle->fd, length);
 
-        Timer_Add (IO_Handle->idle_time, SingleShot, io_timeout, IO_Handle); // 1 hour if there is action - fire wall seems to keep open and recycle
+        Timer_Add (IO_Handle->idle_time, SingleShot, io_timeout, IO_Handle);
 
         IO_Handle->rx_index -= length;
 
@@ -969,7 +969,7 @@ void *io_connect (const char *ip, int port, int use_ssl, int idle_time, int size
 
   if (isValidIpAddress (ip))
   {
-    IO_Handle = list_add (&io_list, size, "conn");
+    IO_Handle = list_add (&io_list, sizeof(IO_Handle_t) + size, "conn out");
 
     if (IO_Handle)
     {

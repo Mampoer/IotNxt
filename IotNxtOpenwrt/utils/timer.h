@@ -30,6 +30,10 @@ void Timer_Cleanup (void *UserData);
 
 void Timer_Check (void);
 
+#define ONE_SECOND      10
+#define ONE_MINUTE      60 * ONE_SECOND
+#define ONE_HOUR        60 * ONE_MINUTE
+
 //**********************************************************************************
 #endif /* TIMER_H_ */
 //**********************************************************************************

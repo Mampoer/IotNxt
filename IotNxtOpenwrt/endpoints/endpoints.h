@@ -18,6 +18,10 @@ void iot_device         ( http_conn_t     *http_conn
                         , char            *payload
                         , bool            debug         );
 
+void iot_list           ( http_conn_t     *http_conn
+                        , char            *payload
+                        , bool            debug         );
+
 void iot_config         ( http_conn_t     *http_conn
                         , char            *payload
                         , bool            debug         );
