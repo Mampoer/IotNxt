@@ -57,6 +57,8 @@ void iot_config ( http_conn_t     *http_conn
       snprintf (err, sizeof(err), "<html><h1>400 - Invalid JSON: line %d - %s</h1></html>", error.line, error.text);
 
       http_reply (http_conn, HTTP_RES_400, NULL, err, strlen (err));
+
+      return;
     }
     else
     {
@@ -109,14 +111,6 @@ void iot_config ( http_conn_t     *http_conn
         }
       }
 
-      list_t *http_header_list = NULL;
-
-      add_http_header (&http_header_list, "Content-Type", MIME_APPLICATION_JSON);
-
-      http_reply (http_conn, HTTP_RES_200, http_header_list, NULL, 0);
-
-      list_clear (&http_header_list, NULL, __func__);
-
       if (save_config)
       {
         // todo save config as xml or something
@@ -135,13 +129,37 @@ void iot_config ( http_conn_t     *http_conn
         json_decref  (iot_config_info.json_object);
     }
   }
-  else
-  {
-    DEBUG_PRINTF("ERROR: Empty query");
 
-    reply_error ( http_conn
-                , "Empty query"
-                , __SHORT_FILE__
-                , __LINE__);
+  char *ret = NULL;
+
+  json_t *rsp_object = json_object ();
+
+  if (rsp_object)
+  {
+    json_t *params = json_object ();
+
+    if (params)
+    {
+      json_object_set_new (params, "host", json_string (config.api_host));
+      json_object_set_new (params, "user", json_string (config.api_user));
+      json_object_set_new (params, "pass", json_string (config.api_pass));
+
+      json_object_set_new (rsp_object, "config", params);
+    }
+
+    ret = json_dumps (rsp_object, JSON_ENSURE_ASCII | JSON_PRESERVE_ORDER | JSON_COMPACT);
   }
+
+  json_decref (rsp_object);
+
+  list_t *http_header_list = NULL;
+
+  add_http_header (&http_header_list, "Content-Type", MIME_APPLICATION_JSON);
+
+  http_reply (http_conn, HTTP_RES_200, http_header_list, ret, strlen(ret));
+
+  list_clear (&http_header_list, NULL, __func__);
+
+  if (ret)
+    free (ret);
 }

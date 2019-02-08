@@ -100,20 +100,10 @@ char *iot_list_json (void)
     json_array_append_new (rsp_array, json_arr_item);
   }
 
-  json_t *params = json_object ();
-
-  if (params)
-  {
-    json_object_set_new (params, "host", json_string (config.api_host));
-    json_object_set_new (params, "user", json_string (config.api_user));
-    json_object_set_new (params, "pass", json_string (config.api_pass));
-  }
-
   json_t *rsp_object = json_object ();
 
   if (rsp_object)
   {
-    json_object_set_new (rsp_object, "config", params);
     json_object_set_new (rsp_object, "devices", rsp_array);
 
     ret = json_dumps (rsp_object, JSON_ENSURE_ASCII | JSON_PRESERVE_ORDER | JSON_COMPACT);
