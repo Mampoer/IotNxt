@@ -809,7 +809,7 @@ static void buf_rx (IO_Handle_t *IO_Handle, uint8_t *buf, int len)
 
       if (length > 0)
       {
-        DEBUG_PRINTF("(%s:%d) parser returned %d of %d in buf", IO_Handle->ip, IO_Handle->fd, length, IO_Handle->rx_index);
+        //DEBUG_PRINTF("(%s:%d) parser returned %d of %d in buf", IO_Handle->ip, IO_Handle->fd, length, IO_Handle->rx_index);
 
         Timer_Add (IO_Handle->idle_time, SingleShot, io_timeout, IO_Handle);
 

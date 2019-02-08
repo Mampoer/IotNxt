@@ -20,7 +20,7 @@ void iot_list ( http_conn_t     *http_conn
 {
   char *ret = iot_list_json ();
 
-  DEBUG_PRINTF("\t (%s:%d) %s", http_conn->IO_Handle.ip, http_conn->IO_Handle.fd, ret);
+//  DEBUG_PRINTF("\t (%s:%d) %s", http_conn->IO_Handle.ip, http_conn->IO_Handle.fd, ret);
 
   list_t *http_header_list = NULL;
 

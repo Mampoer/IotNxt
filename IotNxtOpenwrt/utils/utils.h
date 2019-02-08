@@ -49,7 +49,12 @@ void debug_keep_alive (void *userdata);
 
 #define LINE TOSTRING(__LINE__)
 
+#ifdef _DEBUG
 #define DEBUG_PRINTF(...)    {printf("%s %-18.18s %4d: ", local_time_string(), __SHORT_FILE__, __LINE__); printf(__VA_ARGS__); putchar('\n'); fflush(stdout);}
+#else
+#define DEBUG_PRINTF(...)
+#endif
+
 
 #define           display_time_string()       local_time_string()
 

@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 
 
+#include "config.h"
 #include "timer.h"
 #include "ssl.h"
 #include "io.h"
@@ -206,18 +207,18 @@ void init (int argc, char *argv [])
 {
   if ( gethostname ( hostname, sizeof ( hostname ) ) != 0 )    strcpy ( hostname, "unknown" );
 #if defined(__x86_64__)
-  DEBUG_PRINTF("compiled X64 (%s)", hostname );
+  printf("compiled X64 (%s)\n", hostname );
 #elif defined(__i386__)
-  DEBUG_PRINTF("compiled i386 (%s)", hostname);
+  printf("compiled i386 (%s)\n", hostname);
 #elif defined(__arm__)
-  DEBUG_PRINTF("compiled armv6l (%s)", hostname);
+  printf("compiled armv6l (%s)\n", hostname);
 #else
-#error "No definition for CPU"
+#error "No definition for CPU\n"
 #endif
 
   if ( JANSSON_VERSION_HEX < 0x020800)
   {
-    DEBUG_PRINTF("Lib Jansson version too low %d.%d < 2.8", JANSSON_MAJOR_VERSION, JANSSON_MINOR_VERSION);
+    printf ("Lib Jansson version too low %d.%d < 2.8\n", JANSSON_MAJOR_VERSION, JANSSON_MINOR_VERSION);
     abort();
   }
 
@@ -229,10 +230,10 @@ void init (int argc, char *argv [])
 
   correct_path (argv);
 
-  if ( !IsDebuggerPresent () )
+  if (!IsDebuggerPresent ())
   {
-    printf ( "daemonising!\n");
-    daemonize();
+    printf ("daemonising!\n");
+    daemonize ();
   }
 
   setup_signals (argv);
@@ -242,6 +243,34 @@ void init (int argc, char *argv [])
   Timer_Init ();
 
 //  LoadConfigurationData (argc, argv, "Config.xml");
+
+  if (!config.api_host)
+    config.api_host = strdup ("https://prototype.iotnxt.io/api/v3/data/post");
+  if (!config.api_user)
+    config.api_user = strdup ("api");
+  if (!config.api_key)
+    config.api_key  = strdup ("dgcszsu7qhb5f3p0prcf1ckqpwimeydi");
+
+
+  // write luci files
+  // open /usr/lib/lua/luci/controller/admin/index.lua
+  // look for line -- Logout is last
+  // add before logout:
+  //  page = node("admin", "iot")
+  //  page.title = _("IoT")
+  //  page.order = 60
+  //  page.index = true
+  //  toplevel_page(page, "admin/iot/overview", alias("admin", "iot", "overview"))
+  // write a file /usr/lib/lua/luci/controller/admin/iot.lua
+  //  module("luci.controller.admin.iot", package.seeall)
+  //
+  //  function index()
+  //    entry({"admin", "iot", "overview"}, template("admin_iot/index"), _("Overview"), 1)
+  //
+  //  end
+  // mkdir /usr/lib/lua/luci/view/admin_iot
+  // write a file /usr/lib/lua/luci/view/admin_iot/index.htm
+
 
   init_sockets ();
 

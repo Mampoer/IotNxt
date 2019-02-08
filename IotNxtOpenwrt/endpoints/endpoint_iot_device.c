@@ -11,8 +11,8 @@
 
 #include <stdlib.h>
 
-#include "web_notification.h"
 #include "file_serve.h"
+#include "config.h"
 #include "resolv.h"
 #include "json.h"
 
@@ -130,12 +130,14 @@ static void server_cleanup (void *userdata)
       char Path[1024] = "";
       char Server[255] = "";
       iot_device_info->port = 443;
-      iot_device_info->url = strdup ("https://prototype.iotnxt.io/api/v3/data/post");
+//      iot_device_info->url = strdup ("https://prototype.iotnxt.io/api/v3/data/post");
+      iot_device_info->url = strdup (config.api_host);
 
       if (ExplodeURL (iot_device_info->url, Server, &iot_device_info->port, Path) == 1)
       {
         iot_device_info->server   = strdup (Server);
-        iot_device_info->request  = http_post (Server, Path, "api", "dgcszsu7qhb5f3p0prcf1ckqpwimeydi", iot_device_info->original);
+//        iot_device_info->request  = http_post (Server, Path, "api", "dgcszsu7qhb5f3p0prcf1ckqpwimeydi", iot_device_info->original);
+        iot_device_info->request  = http_post (Server, Path, config.api_user, config.api_key, iot_device_info->original);
 
         if (iot_device_info->request)
         {
@@ -259,7 +261,7 @@ static int server_io (IO_Handle_t *IO_Handle)
             {
               if (IO_Handle->tx_index == 0)
               {
-                DEBUG_PRINTF("(%s:%d) Send ready", IO_Handle->ip, IO_Handle->fd)
+                //DEBUG_PRINTF("(%s:%d) Send ready", IO_Handle->ip, IO_Handle->fd)
 
                 if (iot_device_info->request)
                 {
@@ -428,12 +430,14 @@ void iot_device ( http_conn_t     *http_conn
           char Path[1024] = "";
           char Server[255] = "";
           iot_device_info->port = 443;
-          iot_device_info->url = strdup ("https://prototype.iotnxt.io/api/v3/data/post");
+//          iot_device_info->url = strdup ("https://prototype.iotnxt.io/api/v3/data/post");
+          iot_device_info->url = strdup (config.api_host);
 
           if (ExplodeURL (iot_device_info->url, Server, &iot_device_info->port, Path) == 1)
           {
             iot_device_info->server   = strdup (Server);
-            iot_device_info->request  = http_post (Server, Path, "api", "dgcszsu7qhb5f3p0prcf1ckqpwimeydi", payload);
+//            iot_device_info->request  = http_post (Server, Path, "api", "dgcszsu7qhb5f3p0prcf1ckqpwimeydi", payload);
+            iot_device_info->request  = http_post (Server, Path, config.api_user, config.api_key, payload);
 
             if (iot_device_info->request) // look for open server conn
             {

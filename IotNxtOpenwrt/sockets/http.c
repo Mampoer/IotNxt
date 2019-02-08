@@ -33,7 +33,7 @@ static void http_conn_cleanup (IO_Handle_t *IO_Handle)
 
     memset ((void *)http_conn + sizeof(IO_Handle_t), 0, sizeof(http_conn_t) - sizeof(IO_Handle_t));
 
-    DEBUG_PRINTF("(%s:%d) cleaned up\n", IO_Handle->ip, IO_Handle->fd);
+    //DEBUG_PRINTF("(%s:%d) cleaned up\n", IO_Handle->ip, IO_Handle->fd);
   }
 }
 

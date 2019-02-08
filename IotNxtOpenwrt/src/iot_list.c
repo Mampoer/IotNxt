@@ -39,6 +39,7 @@ void iot_list_update (char *id, char *data)
         free (iot_list_item->data);
 
       iot_list_item->data = strdup (data);
+      iot_list_item->timestamp = time (0);
 
       updated = true;
 
@@ -84,7 +85,14 @@ char *iot_list_json (void)
     if (iot_list_item->data)
       json_object_set_new (json_arr_item, "data", json_string (iot_list_item->data));
 
-    json_object_set_new (json_arr_item, "timestamp", json_integer (iot_list_item->timestamp));
+    //    json_object_set_new (json_arr_item, "timestamp", json_integer (iot_list_item->timestamp));
+
+    static char buf [32];
+    struct tm tm = *gmtime (&iot_list_item->timestamp);
+
+    strftime (buf, sizeof(buf), "%Y-%m-%d %X", &tm);
+
+    json_object_set_new (json_arr_item, "timestamp", json_string (buf));
 
     json_array_append_new (rsp_array, json_arr_item);
   }

@@ -526,9 +526,9 @@ int  http_parse_request   ( http_conn_t *http_conn
   return 0;
 }
 
-int http_parse_response  ( http_rsp_t  *http_rsp // we have no option but to rescan
-                          , char        *rx_buf
-                          , int         *rx_index)
+int http_parse_response ( http_rsp_t  *http_rsp // we have no option but to rescan
+                        , char        *rx_buf
+                        , int         *rx_index)
 {
   const char            *msg;
   size_t                msg_len;
@@ -561,10 +561,10 @@ int http_parse_response  ( http_rsp_t  *http_rsp // we have no option but to res
 
       for ( int i = 0; i < num_headers; ++i)
       {
-        DEBUG_PRINTF("\t headers: %.*s: %.*s" , (int)headers[i].name_len
-                                              , headers[i].name
-                                              , (int)headers[i].value_len
-                                              , headers[i].value);
+//        DEBUG_PRINTF("\t headers: %.*s: %.*s" , (int)headers[i].name_len
+//                                              , headers[i].name
+//                                              , (int)headers[i].value_len
+//                                              , headers[i].value);
 
         if (headers[i].name_len == 17)
           if (strncasecmp (headers[i].name, "Transfer-Encoding", (int) headers[i].name_len) == 0)
