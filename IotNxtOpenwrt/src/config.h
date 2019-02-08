@@ -6,7 +6,7 @@
 typedef struct config {
   char *api_host;
   char *api_user;
-  char *api_key;
+  char *api_pass;
 } config_t;
 
 extern config_t config;

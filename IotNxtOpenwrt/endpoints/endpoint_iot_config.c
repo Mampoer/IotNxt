@@ -15,7 +15,7 @@
 typedef struct iot_config_info {
   char                  *host;
   char                  *user;
-  char                  *key;
+  char                  *pass;
 
   json_t                *json_object;
 } iot_config_info_t;
@@ -28,7 +28,7 @@ static void load_iot_config_values (json_t *root, iot_config_info_t *iot_config_
 
   load_json_string_value ( root, &iot_config_info->host     , "host"      , "\t Host"             );
   load_json_string_value ( root, &iot_config_info->user     , "user"      , "\t User"             );
-  load_json_string_value ( root, &iot_config_info->key      , "key"       , "\t Key"              );
+  load_json_string_value ( root, &iot_config_info->pass     , "pass"      , "\t Pass"             );
 
   DEBUG_PRINTF("\t ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 }
@@ -94,18 +94,18 @@ void iot_config ( http_conn_t     *http_conn
         }
       }
 
-      if (iot_config_info.key)
+      if (iot_config_info.pass)
       {
-        if (strcmp (iot_config_info.key, config.api_key) != 0)
+        if (strcmp (iot_config_info.pass, config.api_pass) != 0)
         {
-          if (config.api_key)
-            free (config.api_key);
+          if (config.api_pass)
+            free (config.api_pass);
 
-          config.api_key = strdup (iot_config_info.key);
+          config.api_pass = strdup (iot_config_info.pass);
 
           save_config = true;
 
-          DEBUG_PRINTF("new config item key:  %s", config.api_key);
+          DEBUG_PRINTF("new config item pass:  %s", config.api_pass);
         }
       }
 
@@ -128,8 +128,8 @@ void iot_config ( http_conn_t     *http_conn
       if (iot_config_info.user)
         free (iot_config_info.user);
 
-      if (iot_config_info.key)
-        free (iot_config_info.key);
+      if (iot_config_info.pass)
+        free (iot_config_info.pass);
 
       if (iot_config_info.json_object)
         json_decref  (iot_config_info.json_object);

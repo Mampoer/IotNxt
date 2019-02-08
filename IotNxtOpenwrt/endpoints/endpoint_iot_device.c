@@ -137,7 +137,7 @@ static void server_cleanup (void *userdata)
       {
         iot_device_info->server   = strdup (Server);
 //        iot_device_info->request  = http_post (Server, Path, "api", "dgcszsu7qhb5f3p0prcf1ckqpwimeydi", iot_device_info->original);
-        iot_device_info->request  = http_post (Server, Path, config.api_user, config.api_key, iot_device_info->original);
+        iot_device_info->request  = http_post (Server, Path, config.api_user, config.api_pass, iot_device_info->original);
 
         if (iot_device_info->request)
         {
@@ -437,7 +437,7 @@ void iot_device ( http_conn_t     *http_conn
           {
             iot_device_info->server   = strdup (Server);
 //            iot_device_info->request  = http_post (Server, Path, "api", "dgcszsu7qhb5f3p0prcf1ckqpwimeydi", payload);
-            iot_device_info->request  = http_post (Server, Path, config.api_user, config.api_key, payload);
+            iot_device_info->request  = http_post (Server, Path, config.api_user, config.api_pass, payload);
 
             if (iot_device_info->request) // look for open server conn
             {

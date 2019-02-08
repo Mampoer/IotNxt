@@ -248,8 +248,8 @@ void init (int argc, char *argv [])
     config.api_host = strdup ("https://prototype.iotnxt.io/api/v3/data/post");
   if (!config.api_user)
     config.api_user = strdup ("api");
-  if (!config.api_key)
-    config.api_key  = strdup ("dgcszsu7qhb5f3p0prcf1ckqpwimeydi");
+  if (!config.api_pass)
+    config.api_pass  = strdup ("dgcszsu7qhb5f3p0prcf1ckqpwimeydi");
 
 
   // write luci files
