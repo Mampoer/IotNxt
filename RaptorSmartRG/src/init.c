@@ -216,11 +216,11 @@ void init (int argc, char *argv [])
 #error "No definition for CPU\n"
 #endif
 
-  if ( JANSSON_VERSION_HEX < 0x020800)
-  {
-    printf ("Lib Jansson version too low %d.%d < 2.8\n", JANSSON_MAJOR_VERSION, JANSSON_MINOR_VERSION);
-    abort();
-  }
+//  if ( JANSSON_VERSION_HEX < 0x020800)
+//  {
+//    printf ("Lib Jansson version too low %d.%d < 2.8\n", JANSSON_MAJOR_VERSION, JANSSON_MINOR_VERSION);
+//    abort();
+//  }
 
 //  if ( OPENSSL_VERSION_NUMBER < 0x100020efL)
 //  {

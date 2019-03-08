@@ -37,7 +37,9 @@ void debug_print_http_req_headder (struct phr_header *headers, size_t num_header
 {
   if (headers && num_headers)
   {
-    for (int i = 0; i != num_headers; ++i)
+    int i;
+
+    for (i = 0; i != num_headers; ++i)
     {
       DEBUG_PRINTF("\t headers: %.*s: %.*s"     , (int)headers[i].name_len
                                                 , headers[i].name
@@ -347,6 +349,8 @@ int  http_parse_request   ( http_conn_t *http_conn
 
         if (pret > 0) // passing good, grab everything you need here as any more data will force a realloc on the rxbuf
         {
+          int i;
+
           http_conn->header_lenght = pret;
           http_conn->content_length = 0;
 
@@ -354,7 +358,7 @@ int  http_parse_request   ( http_conn_t *http_conn
 
           http_conn->url_decoded_path = url_decode (path, path_len);
 
-          for (int i = 0; i != num_headers; ++i)
+          for (i = 0; i != num_headers; ++i)
           {
             if (headers[i].name_len == 14)
               if (strncasecmp (headers[i].name, "Content-Length", 14) == 0)
@@ -553,13 +557,15 @@ int http_parse_response ( http_rsp_t  *http_rsp // we have no option but to resc
 
     if (pret > 0) /* successfully parsed the request */
     {
+      int i;
+
       http_rsp->headder_length = pret;
 
 //      DEBUG_PRINTF("\t response is %d bytes long", pret);
 //      DEBUG_PRINTF("\t HTTP version is 1.%d"     , http_rsp->minor_version);
 //      DEBUG_PRINTF("\t msg is %.*s"              , (int)msg_len, msg);
 
-      for ( int i = 0; i < num_headers; ++i)
+      for (i = 0; i < num_headers; ++i)
       {
 //        DEBUG_PRINTF("\t headers: %.*s: %.*s" , (int)headers[i].name_len
 //                                              , headers[i].name

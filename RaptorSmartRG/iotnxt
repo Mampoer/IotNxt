@@ -1,0 +1,27 @@
+#!/bin/sh /etc/rc.common
+
+
+START=99
+
+
+
+## Post initialization part
+
+post_init()
+
+{
+
+if [ -e /root/IotNxtOpenwrt ]; then
+
+/root/IotNxtOpenwrt
+
+fi
+
+}
+
+
+start() {
+
+post_init
+
+}
